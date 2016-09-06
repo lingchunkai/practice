@@ -8,6 +8,9 @@ Script where I take baby steps into Theano
 TODO: convert to notebook?
 '''
 
+#############################################################
+# Part I
+
 x = T.dscalar('x')
 y = T.dscalar('y')
 z = x + y
@@ -49,3 +52,28 @@ Bin = np.array([[4,3], [5,6]])
 print 'Comparing numpy vs theano, note different in datatype'
 print 'Theano:\n', D(Ain, Bin)
 print 'numpy:\n', np.dot(Ain, Bin)
+
+
+#############################################################
+# Part II
+
+# Logistic regression on product of matrices (depends on previous part)
+E = 1.0/(1.0+T.exp(-C)) # <--- Note broadcasting rules apply here
+print pp(E)
+fE = function([A,B], E)
+# Lets define Ain, Bin to be transition matrices! (rows must sum to 1 - we are using the statisticians convention where p' = pM)
+Ain = np.array([[0.2, 0.8], [0.4, 0.6]])
+Bin = np.array([[0.8, 0.2], [0.5, 0.5]])
+print fE(Ain, Bin) # Qn: is there a way we can extract the intermediate computed result, or do theano optimizations obscure these from us?
+
+# Multiple outputs: lets compute the different norms between vectors x and y!
+x = T.dvector('x')
+y = T.dvector('y')
+L1 = T.sum(T.abs_(x - y))
+L2 = T.sqrt(T.sum((x - y) ** 2))
+Linf = T.max(T.abs_(x-y))
+fNorm = function([x,y], [L1, L2, Linf])
+xin = np.array([7,11])
+yin = np.array([8,31])
+print 'Theano norms:', fNorm(xin, yin)
+print 'Numpy norms:', np.linalg.norm(xin-yin, 1), np.linalg.norm(xin-yin, 2), np.linalg.norm(xin-yin, float('inf'))
