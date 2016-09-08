@@ -6,6 +6,7 @@ import scipy
 import matplotlib.pyplot as plt
 
 SPARSITY_LEVEL = 10
+SPARSITY_TARGET = 10
 DATA_LENGTH = 256
 
 ###############################################################
@@ -60,10 +61,10 @@ class MultiMatchOp(object):
     def __call__(self, a, b):
         return self.op(a, b)
 
-print 'MP, sparsity: ', SPARSITY_LEVEL
+print 'MP, sparsity: ', SPARSITY_TARGET
 f1 = T.dvector('f1') # data (single vector)
 D1 = T.dmatrix('D1') # dictionary
-mp_func = MultiMatchOp(f1, D1, 10)
+mp_func = MultiMatchOp(f1, D1, 8)
 # single block
 c, res = mp_func(np.squeeze(signal_noisy), all_basis)
 
