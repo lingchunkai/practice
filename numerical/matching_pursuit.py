@@ -23,6 +23,13 @@ coeff_true[choices] = np.random.uniform(-1., 1., size=[SPARSITY_LEVEL, 1])
 signal_true = np.dot(all_basis, coeff_true)
 signal_noisy = signal_true + np.random.normal(0., 0.001, size=[signal_true.shape[0], 1])
 
+def EvaluateDecomposition(signal_true, coeff_true, coeff_recon, D):
+    residual_actual = np.linalg.norm(signal_true - np.dot(D, coeff_recon))
+    support_orig = set(np.where(np.squeeze(coeff_true) != 0.)[0].tolist()) 
+    support_recon = set(np.where(np.squeeze(coeff_recon) != 0.)[0].tolist())
+    iou = float(len(support_orig.intersection(support_recon))) / float(len(support_orig.union(support_recon)))
+    return residual_actual, iou
+
 ###############################################################
 # Matching pursuit (not OMP!)
 
@@ -56,9 +63,9 @@ class MultiMatchOp(object):
 print 'MP, sparsity: ', SPARSITY_LEVEL
 f1 = T.dvector('f1') # data (single vector)
 D1 = T.dmatrix('D1') # dictionary
-single_match = MultiMatchOp(f1, D1, 10)
+mp_func = MultiMatchOp(f1, D1, 10)
 # single block
-c, res = single_match(np.squeeze(signal_noisy), all_basis)
+c, res = mp_func(np.squeeze(signal_noisy), all_basis)
 
 plt.figure()
 ax1 = plt.subplot(221)
@@ -75,3 +82,6 @@ ax4 = plt.subplot(224)
 markerline, stemlines, baseline = ax4.stem(range(all_basis.shape[1]), c, '-.')
 ax4.set_ylim([-1, 1])
 plt.show()
+
+residual, iou = EvaluateDecomposition(signal_true, coeff_true, c, all_basis)
+print 'residual: %.5f, %.2f' % (residual, iou)
