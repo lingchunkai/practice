@@ -25,17 +25,39 @@ signal_noisy = signal_true + np.random.normal(0., 0.001, size=[signal_true.shape
 
 ###############################################################
 # Matching pursuit (not OMP!)
-f = T.dvector('f') # data (single vector)
-D = T.dmatrix('D') # dictionary
-proj = T.dot(D.T, f)
-amax = T.argmax(proj)
-dist = proj[amax]
-residual = f - T.squeeze(D[:, amax] * dist)
-coeffs = T.zeros([D.shape[1], 1])
-coeffs = T.set_subtensor(coeffs[amax], dist)
 
+theano.config.compute_test_value = "ignore"
+class SingleMatchOp(object):
+    def __init__(self, f, D):
+        self.f = f
+        self.D = D
+        self.proj = T.dot(self.D.T, self.f)
+        self.amax = T.argmax(T.abs_(self.proj))
+        self.dist = self.proj[self.amax]
+        self.residual = self.f - T.squeeze(self.D[:, self.amax] * self.dist)
+        self.coeffs = T.zeros([self.D.shape[1], 1])
+        self.coeffs = T.set_subtensor(self.coeffs[self.amax], self.dist)
+
+class MultiMatchOp(object):
+    def __init__(self, f, D, nSparsity):
+        # assert(nSparsity > 0)
+        self.X = [SingleMatchOp(f, D)]
+        for n in xrange(1, nSparsity):
+            self.X.append(SingleMatchOp(self.X[-1].residual, D))
+        self.cumC = self.X[0].coeffs
+        for n in xrange(1, nSparsity):
+            self.cumC = self.cumC + self.X[n].coeffs
+
+        self.op = function([self.X[0].f, self.X[0].D], [self.cumC, self.X[-1].residual])
+
+    def __call__(self, a, b):
+        return self.op(a, b)
+
+print 'OMP, sparsity: ', SPARSITY_LEVEL
+f1 = T.dvector('f1') # data (single vector)
+D1 = T.dmatrix('D1') # dictionary
+single_match = MultiMatchOp(f1, D1, 10)
 # single block
-single_match = function([f, D], [coeffs, residual]) 
 c, res = single_match(np.squeeze(signal_noisy), all_basis)
 
 plt.figure()
