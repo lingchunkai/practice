@@ -64,7 +64,7 @@ class MultiMatchOp(object):
 print 'MP, sparsity: ', SPARSITY_TARGET
 f1 = T.dvector('f1') # data (single vector)
 D1 = T.dmatrix('D1') # dictionary
-mp_func = MultiMatchOp(f1, D1, 8)
+mp_func = MultiMatchOp(f1, D1, SPARSITY_TARGET)
 # single block
 c, res = mp_func(np.squeeze(signal_noisy), all_basis)
 
