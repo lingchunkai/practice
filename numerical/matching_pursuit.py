@@ -53,7 +53,7 @@ class MultiMatchOp(object):
     def __call__(self, a, b):
         return self.op(a, b)
 
-print 'OMP, sparsity: ', SPARSITY_LEVEL
+print 'MP, sparsity: ', SPARSITY_LEVEL
 f1 = T.dvector('f1') # data (single vector)
 D1 = T.dmatrix('D1') # dictionary
 single_match = MultiMatchOp(f1, D1, 10)
