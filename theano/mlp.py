@@ -95,13 +95,18 @@ train_out = [func_to_learn(train_in[:, n]) for n in xrange(N_TRAIN)]
 validation_in = np.random.uniform(-1., 1., [INPUT_DIMENSION, N_VALIDATION])
 validation_out = [func_to_learn(train_in[:, n]) for n in xrange(N_TRAIN)]
 
-plt.scatter([x[0] for x in train_out], [x[1] for x in train_out])
-plt.show()
-
 # Stochastic gradient descent
 BATCH_SIZE = 1
-N_BATCHES = 2000
-mlp = MLP([INPUT_DIMENSION, 10, 10, 10, 10, 10, 2], learning_rate=0.001)
+N_BATCHES = 250
+mlp = MLP([INPUT_DIMENSION, 10, 10, 10, 10, 10, 2], learning_rate=0.0005, regularization=0.05)
+
+histloss = [None] * N_BATCHES
+plt.ion()
+fig = plt.figure()
+hl, = plt.plot(range(N_BATCHES), histloss)
+plt.show()
+plt.title('Loss')
+plt.pause(0.1)
 for m in xrange(N_BATCHES):
     sample_order = np.random.permutation(N_TRAIN)
     terror, tloss = 0, 0
@@ -109,6 +114,14 @@ for m in xrange(N_BATCHES):
         gradsloss = mlp.backprop(np.reshape(train_in[:, n], [INPUT_DIMENSION, 1]), train_out[n])
         tloss += gradsloss[-1]
         terror += gradsloss[-2]
+    histloss[m] = tloss
+        
+    hl.set_ydata(histloss)
+    plt.gca().relim()
+    plt.gca().autoscale_view(True,True,True)
+    plt.draw()
+    plt.pause(0.1)
+        
     print 'Training loss: ', tloss, 'Training error: ', terror
 
 out = [np.linalg.norm(mlp(np.reshape(validation_in[:, n], [INPUT_DIMENSION, 1])) - validation_out[n])**2 for n in xrange(N_VALIDATION)]
