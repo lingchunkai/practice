@@ -10,7 +10,6 @@ MLP
 ===
 This is just to reinforce understanding of underlying gradient flow, not to replace standardized theano modules!
 This is obviously very poorly written (eg. uses fixed learning rate, single point SGD etc);     
-No regularization, so it either overfits or doesn't even converge ...
 
 NOTE: all 32 bit in case we want to CUDA things in future!
 '''
@@ -38,9 +37,10 @@ class FC_layer:
 
 
 class MLP:
-    def __init__(self, layer_sizes, learning_rate = 0.1, activation='relu'):
+    def __init__(self, layer_sizes, learning_rate = 0.1, regularization = 0.05, activation='relu'):
 
         # Forward pass
+        self.activation = activation
         self.inputs = T.dmatrix('mlp_inputs')
         self.inputs.tag.test_value = np.random.normal(0., 1., [layer_sizes[0], 1])
         self.output_nodes = [self.inputs]
@@ -51,16 +51,16 @@ class MLP:
         self.outputs = self.layers[-1].output
 
         # Backward pass
+        self.regularization = regularization
         self.learning_rate = learning_rate
         self.groundtruth = T.dmatrix('groundtruth')
         self.groundtruth.tag.test_value = np.random.normal(0., 1., [layer_sizes[-1], 1])
-        # self.learning_rate = T.dscalar('learning_rate')
-        # self.loss = T.nlinalg.norm(self.groundtruth-self.outputs, 1)
-        self.loss = T.sum((self.groundtruth-self.outputs) ** 2)
+        self.error = T.sum((self.groundtruth-self.outputs) ** 2)
+        self.loss = self.error + self.regularization * T.sum(T.concatenate([T.flatten(x.weights, outdim=1) for x in self.layers], axis=0) ** 2)
         self.gradients = [T.grad(self.loss, self.layers[x].weights) for x in xrange(len(self.layers))]
         self.gradients_bias = [T.grad(self.loss, self.layers[x].bias) for x in xrange(len(self.layers))]
 
-        self.backprop = function([self.inputs, self.groundtruth], self.gradients + [self.loss], updates= 
+        self.backprop = function([self.inputs, self.groundtruth], self.gradients + [self.error, self.loss], updates= 
             [(self.layers[x].weights, self.layers[x].weights - self.learning_rate * self.gradients[x]) for x in xrange(len(self.layers))] + 
             [(self.layers[x].bias, self.layers[x].bias - self.learning_rate * self.gradients_bias[x]) for x in xrange(len(self.layers))])
         self.forward = function([self.inputs], [self.outputs])
@@ -78,7 +78,7 @@ mlp = MLP([7, 3, 6, 2], learning_rate=0.05)
 print pp(mlp.outputs)
 for k in xrange(100):
     res = mlp.backprop(np.array([[1], [2], [3], [4], [5], [6], [7]]), np.array([[5], [3]]))
-    print 'loss: ', res[-1]
+    print 'loss: ', res[-1], 'error: ', res[-2]
 print 'Final prediction: ', mlp(np.array([[1], [2], [3], [4], [5], [6], [7]]))
 
 # Try to learn quadratic function
@@ -101,14 +101,15 @@ plt.show()
 # Stochastic gradient descent
 BATCH_SIZE = 1
 N_BATCHES = 2000
-mlp = MLP([INPUT_DIMENSION, 10, 10, 10, 10, 10, 2], learning_rate=0.00005)
+mlp = MLP([INPUT_DIMENSION, 10, 10, 10, 10, 10, 2], learning_rate=0.001)
 for m in xrange(N_BATCHES):
     sample_order = np.random.permutation(N_TRAIN)
-    tloss = 0
+    terror, tloss = 0, 0
     for n in sample_order:
         gradsloss = mlp.backprop(np.reshape(train_in[:, n], [INPUT_DIMENSION, 1]), train_out[n])
         tloss += gradsloss[-1]
-    print 'Training loss: ', tloss
+        terror += gradsloss[-2]
+    print 'Training loss: ', tloss, 'Training error: ', terror
 
 out = [np.linalg.norm(mlp(np.reshape(validation_in[:, n], [INPUT_DIMENSION, 1])) - validation_out[n])**2 for n in xrange(N_VALIDATION)]
 print 'Validation loss: ', sum(out)
